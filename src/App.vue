@@ -42,27 +42,29 @@ export default {
       let isStart;
       let isEnd;
       let width;
+      let isFull;
 
       const reservation = this.reservations.find(({ start, end, roomDetails }) => {
         let duration = Date.parse(end) - Date.parse(start);
         duration = moment.duration(duration).asDays();
 
-        isStart = date === start;
+        isStart = date === start && !this.currentWeek.includes(end);
         isEnd = date === end && !this.currentWeek.includes(start);
+        isFull = date === start;
         
         if (isStart && end > lastDate) {
             duration = Date.parse(lastDate) - Date.parse(start);
-            duration = moment.duration(duration).asDays() + 0.53;
+            duration = moment.duration(duration).asDays() + 0.5;
         };
 
         if (isEnd && start < this.currentWeek[0]) {
             duration = Date.parse(end) - Date.parse(this.currentWeek[0]);
-            duration = moment.duration(duration).asDays() + 0.53;
+            duration = moment.duration(duration).asDays() + 0.5;
         };
 
         width = (duration * 100) + '%' ;
 
-        return roomDetails.name === suite && ( isStart || isEnd );
+        return roomDetails.name === suite && ( isStart || isEnd || isFull );
       });
 
       return {
@@ -70,21 +72,36 @@ export default {
         width,
         isStart,
         isEnd,
+        isFull
       };
-    }
+    },
+    nextWeek() {
+      this.startDate = this.startDate.clone().add(1, 'week').startOf('week');
+    },
+    prevWeek() {
+      this.startDate = this.startDate.clone().subtract(1, 'week').startOf('week');
+    },
+    setToday() {
+      this.startDate = moment().startOf('week');
+    },
   },
   computed: {
     today() {
       return moment().format('YYYY-MM-DD');
     },
+  },
+  watch: {
+    startDate() {
+      this.generateWeek();
+    }
   }
 }
 </script>
 <template>
   <header class="header">
-    <button class="toggle">{{ '<' }}</button>
-    <button class="toggle">{{ '>' }}</button>
-    <button class="toggle">Today</button>
+    <button class="toggle" @click="prevWeek">{{ '<' }}</button>
+    <button class="toggle" @click="nextWeek">{{ '>' }}</button>
+    <button class="toggle" @click="setToday">Today</button>
   </header>
 
   <main class="tableContainer">
@@ -95,6 +112,7 @@ export default {
           <th
             v-for="day in currentWeek"
             :key="day"
+            class="date"
             :class="{ today: day === today }"
           >
             {{ day }}
@@ -116,10 +134,13 @@ export default {
               class="reservation"
               :style="{ width: getDayReservation(suite, day).width }"
               :class="{
+                full: getDayReservation(suite, day).isFull,
                 started: getDayReservation(suite, day).isStart,
                 ended: getDayReservation(suite, day).isEnd,
               }"
-            ></div>
+            >
+              {{ getDayReservation(suite, day).reservation.name }}
+            </div>
           </td>
         </tr>
       </tbody>
@@ -130,7 +151,7 @@ export default {
 
 <style scoped>
   .header {
-    padding: 20px 15px;
+    padding: 15px 15px;
   }
 
   .toggle {
@@ -151,6 +172,10 @@ export default {
   .table {
     width: 100%;
     border-collapse: collapse;
+  }
+
+  .date {
+    padding: 10px;
   }
 
   .suite {
@@ -179,22 +204,29 @@ export default {
     background-color: royalblue;
     height: 100px;
     z-index: 1;
+    color: black;
+    font-size: 16px;
+    line-height: 100px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 8px;
   }
 
   .started {
     left: 50%;
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
   }
 
   .ended {
     right: 50%;
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
-  .startedEnded {
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+  .full {
+    left: 50%;
   }
 </style>
